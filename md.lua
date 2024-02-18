@@ -47,10 +47,16 @@ local function tableLineStream(t)
     end
 end
 
+local function escapeEntities(line)
+    return line and line:gsub("\\([^%c%s%w])", function(c)
+        return ("&#%s;"):format(c:byte())
+    end)
+end
+
 local function bufferStream(linestream)
-    local bufferedLine = linestream()
+    local bufferedLine = escapeEntities(linestream())
     return function()
-        bufferedLine = linestream()
+        bufferedLine = escapeEntities(linestream())
         return bufferedLine
     end, function()
         return bufferedLine
@@ -201,6 +207,7 @@ local PATTERN_BLOCKQUOTE = "^%s*> (.*)$"
 local PATTERN_ULIST = "^%s*[%*%-] (.+)$"
 local PATTERN_OLIST = "^%s*%d+%. (.+)$"
 local PATTERN_LINKDEF = "^%s*%[(.*)%]%s*%:%s*(.*)"
+local PATTERN_HTML = "^%s*<(.-)>"
 
 -- List of patterns
 local PATTERNS = {
@@ -214,7 +221,8 @@ local PATTERNS = {
     PATTERN_BLOCKQUOTE,
     PATTERN_ULIST,
     PATTERN_OLIST,
-    PATTERN_LINKDEF
+    PATTERN_LINKDEF,
+    PATTERN_HTML
 }
 
 local function isSpecialLine(line)
@@ -231,6 +239,24 @@ local function readSimple(pop, peek, tree, links)
 
     local line = peek()
     if not line then return end
+    
+    -- Test for HTML Block
+    local tag = match(line, PATTERN_HTML)
+    if tag then
+        local indent = getIndentLevel(line)
+        local html = {
+            line,
+            '\n'
+        }
+        tree[#tree + 1] = html
+        local next_line = pop() or line .. " "
+        while match(next_line, PATTERN_EMPTY) or getIndentLevel(next_line) > indent do
+            html[#html + 1] = peek()
+            html[#html + 1] = '\n'
+            next_line = pop() or line .. " "
+        end
+        return peek()
+    end
 
     -- Test for Empty or Comment
     if match(line, PATTERN_EMPTY) or match(line, PATTERN_COMMENT) then
@@ -276,7 +302,7 @@ local function readSimple(pop, peek, tree, links)
         tree[#tree + 1] = pre
         while not (match(pop(), PATTERN_CODEBLOCK) and getIndentLevel(peek()) == indent) do
             code[#code + 1] = peek()
-            code[#code + 1] = '\r\n'
+            code[#code + 1] = '\n'
         end
         return pop()
     end
@@ -477,7 +503,7 @@ local function renderLinesRaw(stream, options)
     accum[#accum + 1] = insertTail
     accum[#accum + 1] = tail
     accum[#accum + 1] = appendTail
-    return concat(accum)
+    return concat(accum), links
 end
 
 --------------------------------------------------------------------------------
@@ -485,9 +511,9 @@ end
 --------------------------------------------------------------------------------
 
 local function pwrap(...)
-    local status, value = pcall(...)
+    local status, value, links = pcall(...)
     if status then
-        return value
+        return value, links
     else
         return nil, value
     end
