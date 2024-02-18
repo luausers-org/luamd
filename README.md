@@ -3,12 +3,18 @@ luamd is a Markdown to HTML renderer written in portable, pure Lua. It's also re
 
 ```lua
 local md = require "md"
-local htmlFragment = md[[
+local htmlFragment, links = assert(md[[
+[my_metadata]: 1
 # This is Some Markdown
-Write whatever you want.
+Write whatever you want. \*escape\*
 * Supports Lists
-* And other features
-]]
+* And [other][1] features
+<table>
+   <td>html. Caution: The HTML is not sanitized. User can <script>inject attacks</script>! Sanitize it before send to browser</td>
+</table>
+[1]: https://example.com
+]])
+print(links["my_metadata"]) --> "1"
 ```
 
 ## Install
@@ -17,23 +23,23 @@ Copy `md.lua` to your project in whatever directory you want.
 ## Use it
 Render markdown from a string. On bad input, retuns nil and an error message.
 ```lua
-local html, err = md.renderString(str, options)
+local html, err_or_metadata = md.renderString(str, options)
 ```
 
 Render markdown from a line iterator. An iterator is a function the returns successive lines
 when called repeatedly, and nil when there are no lines left.
 ```lua
-local html, err = md.renderLineIterator(iter, options)
+local html, err_or_metadata = md.renderLineIterator(iter, options)
 ```
 
 Render markdown from a list like table of lines.
 ```lua
-local html, err = md.renderTable(t, options)
+local html, err_or_metadata = md.renderTable(t, options)
 ```
 
 Renders strings, iterators, and tables.
 ```lua
-local html, err = md.render(object, options)
+local html, err_or_metadata = md.render(object, options)
 ```
 
 Calling the module as a function will invoke `md.render`. This is the easiest way to use the module.
@@ -73,11 +79,11 @@ Needs some good unit testing. :).
 Supports most of basic Markdown syntax, but there are some features that need to be implemented.
 I haven't implemented them because I don't need them - yet.
 
-* HTML and code escapes - Probably the most important one on the list.
-* Some alternative syntax for numbered Lists (using `#.`)
-* Indent style code - I prefer backtick quoted code
-* Tables - GitHub style tables would be cool
-* Footnotes - Might need them, but not yet.
+- [x] (UNSTRUSTED) HTML and code escapes - Probably the most important one on the list.
+- [ ] Some alternative syntax for numbered Lists (using `#.`)
+- [ ] Indent style code - I prefer backtick quoted code
+- [ ] Tables - GitHub style tables would be cool. (Workaround: Use HTML)
+- [ ] Footnotes - Might need them, but not yet.
 
 ## Bugs
 
