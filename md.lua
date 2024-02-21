@@ -91,7 +91,10 @@ local function externalLinkEscape(str, t)
         if byte(m1, #m1) == byte '!' then
             t[#t + 1] = {type = 'img', attributes = {alt = m2}}
         else
-            t[#t + 1] = {m2, type = 'a'}
+            t[#t + 1] = {m2, type = 'a', attributes = {
+                href = ((m2:match("^%u") or m2:match("%s")) and (" %s"):format(m2):gsub("%s(.)", function(c) return c:upper() end) or m2):gsub("^%s*(.-)%s*$", "%1")
+              }
+            }
         end
         t[#t + 1] = m3
     end
