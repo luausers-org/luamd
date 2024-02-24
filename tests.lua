@@ -121,6 +121,8 @@ efg]=], [=[<p>abc</p>
     {[=[\`a`b``c`]=], [=[<p>&#96;a<code>b</code><code>c</code></p>]=]},
     {[=[\&#96;]=], [=[<p>&#38;#96;</p>]=]},
     {[=[[a][b][c]]=], [=[<p><a href="a">a</a><a href="b">b</a><a href="c">c</a></p>]=]},
+    {[=[![a](b)]=], [=[<p><img alt="a" src="b"></p>]=]},
+    {[=[![a](b)![c](d)]=], [=[<p><img alt="a" src="b"><img alt="c" src="d"></p>]=]},
     {[=[[a](1)[b](2)[c](3)]=], [=[<p><a href="1">a</a><a href="2">b</a><a href="3">c</a></p>]=]},
     {[=[[a](1)[b][c](3)]=], [=[<p><a href="1">a</a><a href="b">b</a><a href="3">c</a></p>]=]},
     {[=[[a](1)[b c]]=], [=[<p><a href="1">a</a><a href="b c">b c</a></p>]=]},
@@ -129,6 +131,8 @@ efg]=], [=[<p>abc</p>
     {[=[\[a b]: ok
 [a b]]=], [=[<p>&#91;a b]: ok
 <a href="a b">a b</a></p>]=]},
+    {[=[[a b]: ok
+![a b]]=], [=[<p><img alt="a b" src="ok"></img></p>]=]},
     {[=[[a b]:
 [a b]]=], [=[<p><a href="">a b</a></p>]=]},
     {[=[
@@ -326,6 +330,24 @@ b</p>
 <ul>
 <li>a</li>
 </ul>]=]},
+    {[=[`a\[c]b`]=], [=[<p><code>a&#91;c]b</code></p>]=]},
+    {[=[[^2]: footnote
+[^1][a][c][^2]
+[^1]: footnote
+[c]:https://google.com]=], [=[<p><a href="#fn1" id="fnref1"><sup>1</sup></a><a href="a">a</a><a href="https://google.com">c</a><a href="#fn2" id="fnref2"><sup>2</sup></a></p>
+<hr><p id="fn2"><a href="#fnref2">2</a>: footnote</p><p id="fn1"><a href="#fnref1">1</a>: footnote</p>]=]},
+    {[=[[^1]: t]=], [=[<hr><p id="fn1"><a href="#fnref1">1</a>: t</p>]=]},
+    {[=[[]]=], [=[<p><a href=""></a></p>]=]},
+    {[=[[^1]]=], [=[<p><a href="^1">^1</a></p>]=]},
+    {[=[[^*1*]]=], [=[<p>[^<em>1</em>]</p>]=]},
+    {[=[[*1*]]=], [=[<p>[<em>1</em>]</p>]=]},
+    {[=[[\^1]]=], [=[<p><a href="&#94;1">&#94;1</a></p>]=]},
+    {[=[[^1]: t
+[^1]]=], [=[<p><a href="#fn1" id="fnref1"><sup>1</sup></a></p>
+<hr><p id="fn1"><a href="#fnref1">1</a>: t</p>]=]},
+    {[=[[^1]: *t*
+[^1]]=], [=[<p><a href="#fn1" id="fnref1"><sup>1</sup></a></p>
+<hr><p id="fn1"><a href="#fnref1">1</a>: *t*</p>]=]},
 }
 
 local luamd = require "luamd"
@@ -351,7 +373,7 @@ for index = 1, #tests do
         if not result then
             error("Invalid test match:\nMarkdown:\t\t" .. test[1] .. "\nResult:\t\t\terror ('" .. (type(data) == "string" and data:gsub("^.-%d+:%s*(.*)", "%1") or "no description") .. "')\nExpected:\t\t" .. test[2])
         else
-            error("Invalid test match:\nMarkdown:\t\t" .. test[1] .. "\nResult:\t\t\t'" .. result .. "'\nExpected:\t\t" .. test[2])
+            error("Invalid test match:\nMarkdown:\t\t" .. test[1] .. "\nResult:\t\t\t" .. result .. "\nExpected:\t\t" .. test[2])
         end
     end
   elseif not test[2] then
