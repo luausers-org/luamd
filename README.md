@@ -7,7 +7,8 @@ local html = assert(luamd[[
 # This is Some Markdown
 Write whatever you want. \*escape\*
 * Supports Lists
-* And [other] features
+* And [other] features[^1]
+[^1]: footnotes!
 <table>
    <td>html. Caution: The HTML is not sanitized. User can <script>inject attacks</script>! Sanitize it before send to browser</td>
 </table>
@@ -30,7 +31,7 @@ Copy `luamd.lua` to `.lua/` directory.
 * **_Bold + Italic_**: \*\*\_text\_\*\* or \_\_\*text\*\_\_
 * ~~Strikethrough~~: `~~text~~`
 * `Code`: \`text\`
-* Block:<br/>
+* Code Blocks:<br/>
   \`\`\`\[language\]<br/>
   ...<br/>
   \`\`\`
@@ -38,19 +39,22 @@ Copy `luamd.lua` to `.lua/` directory.
   \<tag\><br/>
    ... (requires indent)<br/>
   \</tag\>
-* Blockquote:<br/>
+* Blockquotes:<br/>
   \> text
 * Numbered lists:<br/>
   1\. text<br/>
   2\. text
-* Regular list:<br/>
+* Regular lists:<br/>
   \* text<br/>
   \* text
-* Link:<br/>
+* Links:<br/>
   \[label\]\(url\)<br/>
   \[reference\]<br/>
   \[url\]
-* Reference:<br/>
+* Footnotes:<br/>
+  text\[^footnote name\]<br/>
+  \[^footnote name\]: footnote text<br/>
+* References:<br/>
   \[name\]: value
 
 _All references are returned as the second argument in a table. You can use them as metadata._
@@ -140,7 +144,7 @@ I haven't implemented them because I don't need them - yet.
 - [ ] Some alternative syntax for numbered Lists (using `#.`)
 - [ ] Indent style code - I prefer backtick quoted code
 - [ ] Tables - GitHub style tables would be cool. (Workaround: Use HTML)
-- [ ] Footnotes - Might need them, but not yet.
+- [x] Footnotes - Might need them, but not yet.
 
 ## Bugs
 
