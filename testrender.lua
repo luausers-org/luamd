@@ -4,7 +4,7 @@ and outputs html files of the same name (minus the extension). Open these in a b
 to ensure they look alright.
 ]]
 
-local md = require 'md'
+local md = require 'luamd'
 
 local documents = {
     "1"
