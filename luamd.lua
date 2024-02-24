@@ -25,6 +25,7 @@ local sub = string.sub
 local match = string.match
 local format = string.format
 local gmatch = string.gmatch
+local gsub = string.gsub
 local byte = string.byte
 local find = string.find
 local lower = string.lower
@@ -452,7 +453,18 @@ end
 local function renderTree(tree, links, accum)
     if tree.type then
         local attribs = tree.attributes or {}
-        if tree.type == 'a' and not attribs.href then attribs.href = links[lower(tree[1] or '')] or tree[1] end
+        if tree.type == 'a' and not attribs.href then
+            local href = lower(tree[1] or '')
+            if match(href, "^%^") and links[href] then
+                tree[2] = gsub(tree[1], "^%^", "")
+                attribs.href = "#fn" .. tree[2]
+                attribs.id = "fnref" .. tree[2]
+                tree[1] = "<sup>"
+                tree[3] = "</sup>"
+            else
+                attribs.href = links[href] or tree[1] or ''
+            end
+        end
         if tree.type == 'img' and not attribs.src then attribs.src = links[lower(attribs.alt or '')] or '' end
         local attribstr = renderAttributes(attribs)
         if #attribstr > 0 then
@@ -498,6 +510,34 @@ local function renderLinesRaw(stream, options)
     accum[#accum + 1] = prependHead
     accum[#accum + 1] = head
     accum[#accum + 1] = insertHead
+    local footnotes = false
+    for key, value in pairs(links) do
+        if match(key, "^%^") then
+            if not footnotes then
+                tree[#tree + 1] = {
+                    type = "hr",
+                    noclose = true
+                }
+                footnotes = true
+            end
+            key = gsub(key, "^%^", "")
+            tree[#tree + 1] = {
+                type = "p",
+                attributes = {
+                    id = "fn" .. key
+                },
+                {
+                    type = "a",
+                    attributes = {
+                        href = "#fnref" .. key
+                    },
+                    key
+                },
+                ": ",
+                value
+            }
+        end
+    end
     renderTree(tree, links, accum)
     if accum[#accum] == NEWLINE then accum[#accum] = nil end
     accum[#accum + 1] = insertTail
