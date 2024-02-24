@@ -2,8 +2,8 @@
 luamd is a Markdown to HTML renderer written in portable, pure Lua. It's also really easy to use.
 
 ```lua
-local md = require "md"
-local htmlFragment, links = assert(md[[
+local luamd = require "luamd"
+local htmlFragment, links = assert(luamd[[
 [my_metadata]: 1
 # This is Some Markdown
 Write whatever you want. \*escape\*
@@ -18,31 +18,31 @@ print(links["my_metadata"]) --> "1"
 ```
 
 ## Install
-Copy `md.lua` to your project in whatever directory you want.
+Copy `luamd.lua` to your project in whatever directory you want.
 
 ## Use it
 Render markdown from a string. On bad input, retuns nil and an error message.
 ```lua
-local html, err_or_metadata = md.renderString(str, options)
+local html, err_or_metadata = luamd.renderString(str, options)
 ```
 
 Render markdown from a line iterator. An iterator is a function the returns successive lines
 when called repeatedly, and nil when there are no lines left.
 ```lua
-local html, err_or_metadata = md.renderLineIterator(iter, options)
+local html, err_or_metadata = luamd.renderLineIterator(iter, options)
 ```
 
 Render markdown from a list like table of lines.
 ```lua
-local html, err_or_metadata = md.renderTable(t, options)
+local html, err_or_metadata = luamd.renderTable(t, options)
 ```
 
 Renders strings, iterators, and tables.
 ```lua
-local html, err_or_metadata = md.render(object, options)
+local html, err_or_metadata = luamd.render(object, options)
 ```
 
-Calling the module as a function will invoke `md.render`. This is the easiest way to use the module.
+Calling the module as a function will invoke `luamd.render`. This is the easiest way to use the module.
 
 The options table is an optional table of options. The currently supported options are below.
 * `tag` - Surrounding HTML tag for HTML fragment.
