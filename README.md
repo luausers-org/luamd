@@ -16,7 +16,7 @@ Write whatever you want. \*escape\*
 print(html)
 ```
 
-_It is recommended that you pass the HTML string to `luamd(...)` using double brackets (`[[ ... ]]` or `[=[ ... ]=]`) instead of quotes (`" ... "`)._
+_It is recommended that you pass the markdown string to `luamd(...)` using double brackets (`[[ ... ]]` or `[=[ ... ]=]`) instead of quotes (`" ... "`)._
 
 ## Install
 Copy `luamd.lua` to your project in whatever directory you want.
