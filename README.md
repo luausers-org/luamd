@@ -1,24 +1,79 @@
 # luamd
-luamd is a Markdown to HTML renderer written in portable, pure Lua. It's also really easy to use.
+**luamd** is a Markdown to HTML renderer written in portable, pure Lua. It's also really easy to use. 
 
 ```lua
 local luamd = require "luamd"
-local htmlFragment, links = assert(luamd[[
-[my_metadata]: 1
+local html = assert(luamd[[
 # This is Some Markdown
 Write whatever you want. \*escape\*
 * Supports Lists
-* And [other][1] features
+* And [other] features
 <table>
    <td>html. Caution: The HTML is not sanitized. User can <script>inject attacks</script>! Sanitize it before send to browser</td>
 </table>
-[1]: https://example.com
+[other]: https://example.com
 ]])
-print(links["my_metadata"]) --> "1"
+print(html)
 ```
+
+_It is recommended that you pass the HTML string to `luamd(...)` using double brackets (`[[ ... ]]` or `[=[ ... ]=]`) instead of quotes (`" ... "`)._
 
 ## Install
 Copy `luamd.lua` to your project in whatever directory you want.
+
+## Usage in Redbean
+Copy `luamd.lua` to `.lua/` directory.
+
+## Features
+* **Bold**: \*\*text\*\* or \_\_text\_\_
+* *Italic*: \*text\* or \_text\_
+* **_Bold + Italic_**: \*\*\_text\_\*\* or \_\_\*text\*\_\_
+* ~~Strikethrough~~: `~~text~~`
+* `Code`: \`text\`
+* Block:<br/>
+  \`\`\`\[language\]<br/>
+  ...<br/>
+  \`\`\`
+* Unsanitized HTML:<br/>
+  \<tag\><br/>
+   ... (requires indent)<br/>
+  \</tag\>
+* Blockquote:<br/>
+  \> text
+* Numbered lists:<br/>
+  1\. text<br/>
+  2\. text
+* Regular list:<br/>
+  \* text<br/>
+  \* text
+* Link:<br/>
+  \[label\]\(url\)<br/>
+  \[reference\]<br/>
+  \[url\]
+* Reference:<br/>
+  \[name\]: value
+
+_All references are returned as the second argument in a table. You can use them as metadata._
+
+```lua
+local luamd = require "luamd"
+local html, metadata = luamd[[
+[document year]: 2024
+[website]: http://example.com
+Access [website]
+]]
+print(metadata["document year"]) --> "2024" (as string)
+```
+
+_Escape any markdown special char by preceding with \\_
+
+```lua
+local luamd = require "luamd"
+local html = luamd[[
+\*normal\*
+]]
+print(html) --> <p>&#42;normal&#42;</p>
+```
 
 ## Use it
 Render markdown from a string. On bad input, retuns nil and an error message.
@@ -67,7 +122,9 @@ Here is a little diagram for where the optional fragments go.
 
 ## Testing
 
-There is no unit-testing yet, but testing can be done by running the testrender.lua script. This
+The file `tests.lua` contains some tests to verify if the parser is working correctly.
+
+Testing can be done by running the testrender.lua script. This
 builds HTML files in the test_documents directory that correspond to the markdown source files.
 Open these with a web browser and assure that they look fine. To add more test documents, place
 a markdown file in the test_documents folder and add it to the documents list in testrender.lua.
