@@ -92,7 +92,7 @@ if ARGV[argidx] and ARGV[argidx] ~= "" then
         end
     end
 elseif stdin then
-    local md = require("md")
+    local md = require("luamd")
     local f = stdin
     local content = f:read("*all")
     f:close()
