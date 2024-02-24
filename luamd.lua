@@ -1,5 +1,6 @@
 --[[
 Copyright (c) 2016 Calvin Rose <calsrose@gmail.com>
+Copyright (c) 2024 luausers.org <contact@luausers.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -27,7 +28,6 @@ local gmatch = string.gmatch
 local byte = string.byte
 local find = string.find
 local lower = string.lower
-local tonumber = tonumber -- luacheck: no unused
 local type = type
 local pcall = pcall
 
@@ -54,12 +54,14 @@ local function escapeEntities(line)
 end
 
 local function bufferStream(linestream)
+    local line_number = 1
     local bufferedLine = escapeEntities(linestream())
     return function()
+        line_number = line_number + 1
         bufferedLine = escapeEntities(linestream())
-        return bufferedLine
+        return bufferedLine, line_number
     end, function()
-        return bufferedLine
+        return bufferedLine, line_number
     end
 end
 
@@ -70,8 +72,8 @@ end
 local lineDelimiters = {'`', '__', '**', '_', '*', '~~'}
 local function findDelim(str, start, max)
     local delim = nil
-    local min = 1/0
-    local finish = 1/0
+    local min = math.huge
+    local finish = math.huge
     max = max or #str
     for i = 1, #lineDelimiters do
         local pos, fin = find(str, lineDelimiters[i], start, true)
@@ -84,41 +86,36 @@ local function findDelim(str, start, max)
     return delim, min, finish
 end
 
-local function externalLinkEscape(str, t)
-    local nomatches = true
-    for m1, m2, m3 in gmatch(str, '(.*)%[(.*)%](.*)') do
-        if nomatches then t[#t + 1] = match(m1, '^(.-)!?$'); nomatches = false end
-        if byte(m1, #m1) == byte '!' then
-            t[#t + 1] = {type = 'img', attributes = {alt = m2}}
-        else
-            t[#t + 1] = {m2, type = 'a', attributes = {
-                href = ((m2:match("^%u") or m2:match("%s")) and (" %s"):format(m2):gsub("%s(.)", function(c) return c:upper() end) or m2):gsub("^%s*(.-)%s*$", "%1")
-              }
-            }
-        end
-        t[#t + 1] = m3
-    end
-    if nomatches then t[#t + 1] = str end
-end
-
 local function linkEscape(str, t)
-    local nomatches = true
-    for m1, m2, m3, m4 in gmatch(str, '(.*)%[(.*)%]%((.*)%)(.*)') do
-        if nomatches then externalLinkEscape(match(m1, '^(.-)!?$'), t); nomatches = false end
+    local m1, m2, m3 = match(str, '(.-)%[([^%]]-)%](.*)')
+    if m1 and m2 and m3 then
+      t[#t + 1] = match(m1, '^(.-)!?$')
+      local src, m4 = match(m3, "^%(([^%)]-)%)(.*)")
+      if src then
         if byte(m1, #m1) == byte '!' then
             t[#t + 1] = {type = 'img', attributes = {
-                src = m3,
+                src = src,
                 alt = m2
             }, noclose = true}
         else
-            t[#t + 1] = {m2, type = 'a', attributes = {href = m3}}
+            t[#t + 1] = {m2, type = 'a', attributes = {
+              href = src
+            }}
         end
-        externalLinkEscape(m4, t)
+      else
+        if byte(m1, #m1) == byte '!' then
+          t[#t + 1] = {type = 'img', attributes = {alt = m2}}
+        else
+          t[#t + 1] = {m2, type = 'a'}
+        end
+      end
+      linkEscape(m4 or m3, t)
+    else
+      t[#t + 1] = str
     end
-    if nomatches then externalLinkEscape(str, t) end
 end
 
-local lineDeimiterNames = {['`'] = 'code', ['__'] = 'strong', ['**'] = 'strong', ['_'] = 'em', ['*'] = 'em', ['~~'] = 'strike' }
+local lineDelimiterNames = {['`'] = 'code', ['__'] = 'strong', ['**'] = 'strong', ['_'] = 'em', ['*'] = 'em', ['~~'] = 'strike' }
 local function lineRead(str, start, finish)
     start, finish = start or 1, finish or #str
     local searchIndex = start
@@ -133,7 +130,7 @@ local function lineRead(str, start, finish)
             linkEscape(sub(str, searchIndex, dstart - 1), tree)
         end
         local nextdstart, nextdfinish = find(str, delim, dfinish + 1, true)
-        if nextdstart then
+        if nextdstart and nextdstart <= finish then
             if delim == '`' then
                 tree[#tree + 1]  = {
                     sub(str, dfinish + 1, nextdstart - 1),
@@ -141,7 +138,7 @@ local function lineRead(str, start, finish)
                 }
             else
                 local subtree = lineRead(str, dfinish + 1, nextdstart - 1)
-                subtree.type = lineDeimiterNames[delim]
+                subtree.type = lineDelimiterNames[delim]
                 tree[#tree + 1] = subtree
             end
             searchIndex = nextdfinish + 1
@@ -170,7 +167,7 @@ local function getIndentLevel(line)
     return level
 end
 
-local function stripIndent(line, level, ignorepattern) -- luacheck: no unused args
+local function stripIndent(line, level)
     local currentLevel = -1
     for i = 1, #line do
         if byte(line, i) == byte("\t") then
@@ -184,7 +181,7 @@ local function stripIndent(line, level, ignorepattern) -- luacheck: no unused ar
             return sub(line, i, -1)
         elseif currentLevel > level then
             local front = ""
-            for j = 1, currentLevel - level do front = front .. " " end -- luacheck: no unused args
+            for _ = 1, currentLevel - level do front = front .. " " end -- luacheck: no unused args
             return front .. sub(line, i, -1)
         end
     end
@@ -240,7 +237,7 @@ end
 
 local function readSimple(pop, peek, tree, links)
 
-    local line = peek()
+    local line, ln = peek()
     if not line then return end
     
     -- Test for HTML Block
@@ -269,6 +266,10 @@ local function readSimple(pop, peek, tree, links)
     -- Test for Header
     local m, rest = match(line, PATTERN_HEADER)
     if m then
+        if #m > 6 then
+            rest = sub(m, 7) .. rest
+            m = sub(m, 1, 6)
+        end
         tree[#tree + 1] = {
             lineRead(rest),
             type = "h" .. #m
@@ -303,7 +304,7 @@ local function readSimple(pop, peek, tree, links)
             [1] = code
         }
         tree[#tree + 1] = pre
-        while not (match(pop(), PATTERN_CODEBLOCK) and getIndentLevel(peek()) == indent) do
+        while not (match(assert(pop(), ("unclosed %q (opened at line %s)"):format(line, ln)), PATTERN_CODEBLOCK) and getIndentLevel(peek()) == indent) do
             code[#code + 1] = peek()
             code[#code + 1] = '\n'
         end
@@ -436,10 +437,6 @@ function readLineStream(stream, tree, links)
     return tree, links
 end
 
-local function read(str) -- luacheck: no unused
-    return readLineStream(stringLineStream(str))
-end
-
 --------------------------------------------------------------------------------
 -- Rendering
 --------------------------------------------------------------------------------
@@ -455,7 +452,7 @@ end
 local function renderTree(tree, links, accum)
     if tree.type then
         local attribs = tree.attributes or {}
-        if tree.type == 'a' and not attribs.href then attribs.href = links[lower(tree[1] or '')] or '' end
+        if tree.type == 'a' and not attribs.href then attribs.href = links[lower(tree[1] or '')] or tree[1] end
         if tree.type == 'img' and not attribs.src then attribs.src = links[lower(attribs.alt or '')] or '' end
         local attribstr = renderAttributes(attribs)
         if #attribstr > 0 then
