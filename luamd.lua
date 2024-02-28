@@ -67,6 +67,51 @@ local function bufferStream(linestream)
 end
 
 --------------------------------------------------------------------------------
+-- Useful variables
+--------------------------------------------------------------------------------
+local NEWLINE = '\n'
+
+--------------------------------------------------------------------------------
+-- Patterns
+--------------------------------------------------------------------------------
+
+local PATTERN_EMPTY = "^%s*$"
+local PATTERN_COMMENT = "^%s*<>"
+local PATTERN_HEADER = "^%s*(%#+)%s*(.*)%#*$"
+local PATTERN_RULE1 = "^%s?%s?%s?(-%s*-%s*-[%s-]*)$"
+local PATTERN_RULE2 = "^%s?%s?%s?(*%s**%s**[%s*]*)$"
+local PATTERN_RULE3 = "^%s?%s?%s?(_%s*_%s*_[%s_]*)$"
+local PATTERN_CODEBLOCK = "^%s*%`%`%`(.*)"
+local PATTERN_BLOCKQUOTE = "^%s*> (.*)$"
+local PATTERN_ULIST = "^%s*[%*%-] (.+)$"
+local PATTERN_OLIST = "^%s*%d+%. (.+)$"
+local PATTERN_LINKDEF = "^%s*%[(.*)%]%s*%:%s*(.*)"
+local PATTERN_HTML = "^%s*<(.-)>"
+local PATTERN_LUAUSERS_CITE = "(%s+)<$"
+
+-- List of patterns
+local PATTERNS = {
+    PATTERN_EMPTY,
+    PATTERN_COMMENT,
+    PATTERN_HEADER,
+    PATTERN_RULE1,
+    PATTERN_RULE2,
+    PATTERN_RULE3,
+    PATTERN_CODEBLOCK,
+    PATTERN_BLOCKQUOTE,
+    PATTERN_ULIST,
+    PATTERN_OLIST,
+    PATTERN_LINKDEF,
+    PATTERN_HTML
+}
+
+local function isSpecialLine(line)
+    for i = 1, #PATTERNS do
+        if match(line, PATTERNS[i]) then return PATTERNS[i] end
+    end
+end
+
+--------------------------------------------------------------------------------
 -- Line Level Operations
 --------------------------------------------------------------------------------
 
@@ -119,6 +164,11 @@ end
 local lineDelimiterNames = {['`'] = 'code', ['__'] = 'strong', ['**'] = 'strong', ['_'] = 'em', ['*'] = 'em', ['~~'] = 'strike' }
 local function lineRead(str, start, finish)
     start, finish = start or 1, finish or #str
+    if start and finish then
+        str = gsub(str, PATTERN_LUAUSERS_CITE, function(spaces)
+            return format("%s<cite></cite>", spaces)
+        end)
+    end
     local searchIndex = start
     local tree = {}
     while true do
@@ -185,50 +235,6 @@ local function stripIndent(line, level)
             for _ = 1, currentLevel - level do front = front .. " " end -- luacheck: no unused args
             return front .. sub(line, i, -1)
         end
-    end
-end
-
---------------------------------------------------------------------------------
--- Useful variables
---------------------------------------------------------------------------------
-local NEWLINE = '\n'
-
---------------------------------------------------------------------------------
--- Patterns
---------------------------------------------------------------------------------
-
-local PATTERN_EMPTY = "^%s*$"
-local PATTERN_COMMENT = "^%s*<>"
-local PATTERN_HEADER = "^%s*(%#+)%s*(.*)%#*$"
-local PATTERN_RULE1 = "^%s?%s?%s?(-%s*-%s*-[%s-]*)$"
-local PATTERN_RULE2 = "^%s?%s?%s?(*%s**%s**[%s*]*)$"
-local PATTERN_RULE3 = "^%s?%s?%s?(_%s*_%s*_[%s_]*)$"
-local PATTERN_CODEBLOCK = "^%s*%`%`%`(.*)"
-local PATTERN_BLOCKQUOTE = "^%s*> (.*)$"
-local PATTERN_ULIST = "^%s*[%*%-] (.+)$"
-local PATTERN_OLIST = "^%s*%d+%. (.+)$"
-local PATTERN_LINKDEF = "^%s*%[(.*)%]%s*%:%s*(.*)"
-local PATTERN_HTML = "^%s*<(.-)>"
-
--- List of patterns
-local PATTERNS = {
-    PATTERN_EMPTY,
-    PATTERN_COMMENT,
-    PATTERN_HEADER,
-    PATTERN_RULE1,
-    PATTERN_RULE2,
-    PATTERN_RULE3,
-    PATTERN_CODEBLOCK,
-    PATTERN_BLOCKQUOTE,
-    PATTERN_ULIST,
-    PATTERN_OLIST,
-    PATTERN_LINKDEF,
-    PATTERN_HTML
-}
-
-local function isSpecialLine(line)
-    for i = 1, #PATTERNS do
-        if match(line, PATTERNS[i]) then return PATTERNS[i] end
     end
 end
 
