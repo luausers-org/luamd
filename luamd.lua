@@ -87,7 +87,7 @@ local PATTERN_ULIST = "^%s*[%*%-] (.+)$"
 local PATTERN_OLIST = "^%s*%d+%. (.+)$"
 local PATTERN_LINKDEF = "^%s*%[(.*)%]%s*%:%s*(.*)"
 local PATTERN_HTML = "^%s*<(.-)>"
-local PATTERN_LUAUSERS_CITE = "(%s+)<$"
+local PATTERN_LUAUSERS_MENTION = "(.?.?)(.?)@([%w_%-]+)(.?)"
 
 -- List of patterns
 local PATTERNS = {
@@ -163,11 +163,16 @@ end
 
 local lineDelimiterNames = {['`'] = 'code', ['__'] = 'strong', ['**'] = 'strong', ['_'] = 'em', ['*'] = 'em', ['~~'] = 'strike' }
 local function lineRead(str, start, finish, options)
-    if not start and not finish then
-        str = gsub(str, PATTERN_LUAUSERS_CITE, function(spaces)
-            return format("%s<cite>%s</cite>", spaces, options and options.cite or "")
-        end)
-    end
+    str = gsub(str, PATTERN_LUAUSERS_MENTION, function(dash, before, user, after)
+      if dash == "--" and (before == " " or before == "") and after == "" then
+        return format("<cite>—%s<a href='%s%s'>&#64;%s</a></cite>%s", before, options and options.mentionPrefix or "", user, user, after)
+      elseif 
+        (before == "" or before == " " or lineDelimiterNames[before] or before == "~") and
+        (after == "" or after == " " or lineDelimiterNames[after] or after == "~")
+      then
+        return format("%s%s<a href='%s%s'>&#64;%s</a>%s", dash, before, options and options.mentionPrefix or "", user, user, after)
+      end
+    end)
     start, finish = start or 1, finish or #str
     local searchIndex = start
     local tree = {}
