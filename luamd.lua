@@ -163,12 +163,12 @@ end
 
 local lineDelimiterNames = {['`'] = 'code', ['__'] = 'strong', ['**'] = 'strong', ['_'] = 'em', ['*'] = 'em', ['~~'] = 'strike' }
 local function lineRead(str, start, finish)
-    start, finish = start or 1, finish or #str
-    if start and finish then
+    if not start and not finish then
         str = gsub(str, PATTERN_LUAUSERS_CITE, function(spaces)
             return format("%s<cite></cite>", spaces)
         end)
     end
+    start, finish = start or 1, finish or #str
     local searchIndex = start
     local tree = {}
     while true do
