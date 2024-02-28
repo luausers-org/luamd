@@ -162,10 +162,10 @@ local function linkEscape(str, t)
 end
 
 local lineDelimiterNames = {['`'] = 'code', ['__'] = 'strong', ['**'] = 'strong', ['_'] = 'em', ['*'] = 'em', ['~~'] = 'strike' }
-local function lineRead(str, start, finish)
+local function lineRead(str, start, finish, options)
     if not start and not finish then
         str = gsub(str, PATTERN_LUAUSERS_CITE, function(spaces)
-            return format("%s<cite></cite>", spaces)
+            return format("%s<cite>%s</cite>", spaces, options and options.cite or "")
         end)
     end
     start, finish = start or 1, finish or #str
@@ -188,7 +188,7 @@ local function lineRead(str, start, finish)
                     type = 'code'
                 }
             else
-                local subtree = lineRead(str, dfinish + 1, nextdstart - 1)
+                local subtree = lineRead(str, dfinish + 1, nextdstart - 1, options)
                 subtree.type = lineDelimiterNames[delim]
                 tree[#tree + 1] = subtree
             end
@@ -242,7 +242,7 @@ end
 -- Simple Reading - Non Recursive
 --------------------------------------------------------------------------------
 
-local function readSimple(pop, peek, tree, links)
+local function readSimple(pop, peek, tree, links, options)
 
     local line, ln = peek()
     if not line then return end
@@ -278,7 +278,7 @@ local function readSimple(pop, peek, tree, links)
             m = sub(m, 1, 6)
         end
         tree[#tree + 1] = {
-            lineRead(rest),
+            lineRead(rest, nil, nil, options),
             type = "h" .. #m
         }
         tree[#tree + 1] = NEWLINE
@@ -328,21 +328,21 @@ local function readSimple(pop, peek, tree, links)
     -- Test for header type two
     local nextLine = pop()
     if nextLine and match(nextLine, "^%s*%=+$") then
-        tree[#tree + 1] = { lineRead(line), type = "h1" }
+        tree[#tree + 1] = { lineRead(line, nil, nil, options), type = "h1" }
         return pop()
     elseif nextLine and match(nextLine, "^%s*%-+$") then
-        tree[#tree + 1] = { lineRead(line), type = "h2" }
+        tree[#tree + 1] = { lineRead(line, nil, nil, options), type = "h2" }
         return pop()
     end
 
     -- Do Paragraph
     local p = {
-        lineRead(line), NEWLINE,
+        lineRead(line, nil, nil, options), NEWLINE,
         type = "p"
     }
     tree[#tree + 1] = p
     while nextLine and not isSpecialLine(nextLine) do
-        p[#p + 1] = lineRead(nextLine)
+        p[#p + 1] = lineRead(nextLine, nil, nil, options)
         p[#p + 1] = NEWLINE
         nextLine = pop()
     end
@@ -358,7 +358,7 @@ end
 
 local readLineStream
 
-local function readFragment(pop, peek, links, stop, ...)
+local function readFragment(pop, peek, links, stop, options, ...)
     local accum2 = {}
     local line = peek()
     local indent = getIndentLevel(line)
@@ -369,24 +369,24 @@ local function readFragment(pop, peek, links, stop, ...)
         if stop(line, ...) then break end
     end
     local tree = {}
-    readLineStream(tableLineStream(accum2), tree, links)
+    readLineStream(tableLineStream(accum2), tree, links, options)
     return tree
 end
 
-local function readBlockQuote(pop, peek, tree, links)
+local function readBlockQuote(pop, peek, tree, links, options)
     local line = peek()
     if match(line, PATTERN_BLOCKQUOTE) then
         local bq = readFragment(pop, peek, links, function(l)
             local tp = isSpecialLine(l)
             return tp and tp ~= PATTERN_BLOCKQUOTE
-        end)
+        end, options)
         bq.type = 'blockquote'
         tree[#tree + 1] = bq
         return peek()
     end
 end
 
-local function readList(pop, peek, tree, links, expectedIndent)
+local function readList(pop, peek, tree, links, expectedIndent, options)
     if not peek() then return end
     if expectedIndent and getIndentLevel(peek()) ~= expectedIndent then return end
     local listPattern = (match(peek(), PATTERN_ULIST) and PATTERN_ULIST) or
@@ -402,7 +402,7 @@ local function readList(pop, peek, tree, links, expectedIndent)
     list[1] = NEWLINE
     while lineType == listPattern do
         list[#list + 1] = {
-            lineRead(match(line, lineType)),
+            lineRead(match(line, lineType), nil, nil, options),
             type = "li"
         }
         line = pop()
@@ -417,7 +417,7 @@ local function readList(pop, peek, tree, links, expectedIndent)
                     if not l then return true end
                     local tp = isSpecialLine(l)
                     return tp ~= PATTERN_EMPTY and getIndentLevel(l) < i
-                end)
+                end, options)
                 list[#list + 1] = subtree
                 line = peek()
                 if not line then break end
@@ -430,14 +430,14 @@ local function readList(pop, peek, tree, links, expectedIndent)
     return peek()
 end
 
-function readLineStream(stream, tree, links)
+function readLineStream(stream, tree, links, options)
     local pop, peek = bufferStream(stream)
     tree = tree or {}
     links = links or {}
     while peek() do
-        if not readBlockQuote(pop, peek, tree, links) then
-            if not readList(pop, peek, tree, links) then
-                readSimple(pop, peek, tree, links)
+        if not readBlockQuote(pop, peek, tree, links, options) then
+            if not readList(pop, peek, tree, links, nil, options) then
+                readSimple(pop, peek, tree, links, options)
             end
         end
     end
@@ -495,7 +495,7 @@ local function renderTree(tree, links, accum)
 end
 
 local function renderLinesRaw(stream, options)
-    local tree, links = readLineStream(stream)
+    local tree, links = readLineStream(stream, nil, nil, options)
     local accum = {}
     local head, tail, insertHead, insertTail, prependHead, appendTail = nil, nil, nil, nil, nil, nil
     if options then
